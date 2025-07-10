@@ -1,90 +1,21 @@
 from typing import Dict, Any, List
-from urllib.parse import urlparse
 import os
 from pathlib import Path
-import tempfile
-import git
+import sys
 
-# It's better to handle imports within the functions that use them to avoid circular dependencies
-# and to make the engine more modular.
+# print(f"\n--- Debugging ingestion_engine.py ---")
+# print(f"__name__: {__name__}")
+# print(f"__package__: {__package__}")
+# print(f"sys.path in ingestion_engine.py: {sys.path}")
+# print(f"-------------------------------------")
 
-def validate_github_url(repo_url: str) -> Dict[str, Any]:
-    """Validate GitHub repository URL."""
-    if not repo_url or not isinstance(repo_url, str):
-        return {"valid": False, "error": "Repository URL is required"}
-    
-    repo_url = repo_url.strip()
-    
-    if not ("github.com" in repo_url.lower() or repo_url.endswith(".git")):
-        return {"valid": False, "error": "Please provide a valid GitHub repository URL"}
-    
-    if not (repo_url.startswith("https://") or repo_url.startswith("git@")):
-        return {"valid": False, "error": "Repository URL must start with https:// or git@"}
-    
-    return {"valid": True, "repo_name": repo_url.split('/')[-1].replace('.git', '')}
+from repository_utils import clone_repository, get_repository_files, validate_github_url
 
-def clone_repository(repo_url: str) -> tempfile.TemporaryDirectory:
-    """Clones a repository to a temporary directory and returns the directory object."""
-    temp_dir = tempfile.TemporaryDirectory()
-    try:
-        git.Repo.clone_from(repo_url, temp_dir.name)
-        return temp_dir
-    except git.exc.GitCommandError as e:
-        temp_dir.cleanup()
-        raise RuntimeError(f"Failed to clone repository: {e}") from e
-
-def get_repository_files(repo_path: str) -> Dict[str, List[Path]]:
-    """
-    Get Python and documentation files from a repository.
-    """
-    python_files = []
-    doc_files = []
-    
-    exclude_dirs = {
-        'tests', 'test', '__pycache__', '.git', 'venv', 'env',
-        'node_modules', 'build', 'dist', '.pytest_cache',
-        'examples', 'example', 'demo', 'benchmark'
-    }
-    
-    doc_extensions = {'.md', '.mdx', '.rst', '.ipynb'}
-    
-    for root, dirs, files in os.walk(repo_path):
-        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
-        
-        for file in files:
-            file_path = Path(root) / file
-            
-            if file.endswith('.py') and not file.startswith('test_'):
-                if (file_path.stat().st_size < 500_000 and 
-                    file not in ['setup.py', 'conftest.py']):
-                    python_files.append(file_path)
-            
-            elif file_path.suffix in doc_extensions:
-                doc_files.append(file_path)
-                
-    return {
-        "python_files": python_files,
-        "doc_files": doc_files
-    }
-
-async def ingest_code_to_kg(repo_extractor, python_files: List[Path]) -> Dict[str, Any]:
-    """Analyzes Python files and ingests them into the knowledge graph."""
-    from .knowledge_graphs.parse_repo_into_neo4j import Neo4jCodeAnalyzer
-    analyzer = Neo4jCodeAnalyzer()
-    files_processed = 0
-    for file_path in python_files:
-        try:
-            analysis_result = analyzer.analyze_python_file(str(file_path))
-            await repo_extractor._create_graph_from_analysis(analysis_result)
-            files_processed += 1
-        except Exception as e:
-            print(f"Skipping file {file_path} due to analysis error: {e}")
-    return {"status": "success", "files_processed": files_processed}
 
 async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str) -> Dict[str, Any]:
     """Processes documentation files and ingests them into the RAG system."""
-    from .utils import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
-    from .crawl4ai_mcp import smart_chunk_markdown, extract_section_info, process_code_example
+    from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
+    from src.crawl4ai_mcp import smart_chunk_markdown, extract_section_info, process_code_example
 
     docs_content = []
     for doc_file in doc_files:
@@ -132,7 +63,6 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
         
         if all_code_blocks:
             code_examples = [block['code'] for block in all_code_blocks]
-            # This can be slow, consider parallel execution for production
             code_summaries = [process_code_example((block['code'], block['context_before'], block['context_after'])) for block in all_code_blocks]
             code_urls = [doc['url'] for doc in docs_content for _ in extract_code_blocks(doc['markdown'])]
             code_chunk_numbers = list(range(len(all_code_blocks)))
@@ -143,10 +73,12 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
 
     return {"status": "success", "files_processed": len(doc_files), "chunks_created": len(contents), "code_examples_found": code_examples_found}
 
-async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "docs"]):
+from typing import Dict, Any, List, Optional
+
+async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "docs"], include_folders: Optional[List[str]] = None):
     """Orchestrates the ingestion of a GitHub repository."""
-    from .knowledge_graphs.parse_repo_into_neo4j import DirectNeo4jExtractor
-    from .utils import get_supabase_client
+    from knowledge_graphs.parse_repo_into_neo4j_botingw import DirectNeo4jExtractor
+    from utils import get_supabase_client
 
     validation = validate_github_url(repo_url)
     if not validation["valid"]:
@@ -154,11 +86,11 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
     
     repo_name = validation["repo_name"]
     results = {}
-    temp_dir = None
+    temp_dir_obj = None
 
     try:
-        temp_dir = clone_repository(repo_url)
-        files = get_repository_files(temp_dir.name)
+        temp_dir_obj = clone_repository(repo_url)
+        files = get_repository_files(temp_dir_obj.name, include_folders=include_folders)
         
         if "code" in ingest_types and os.getenv("USE_KNOWLEDGE_GRAPH", "false") == "true":
             neo4j_uri = os.getenv("NEO4J_URI")
@@ -166,7 +98,9 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
             neo4j_password = os.getenv("NEO4J_PASSWORD")
             repo_extractor = DirectNeo4jExtractor(neo4j_uri, neo4j_user, neo4j_password)
             await repo_extractor.initialize()
-            results["code_ingestion"] = await ingest_code_to_kg(repo_extractor, files["python_files"])
+            # We need to pass the repo_path to the analyze_repository function
+            await repo_extractor.analyze_repository(repo_url, temp_dir_obj.name)
+            results["code_ingestion"] = {"status": "success", "files_processed": len(files["python_files"])}
             await repo_extractor.close()
 
         if "docs" in ingest_types:
@@ -178,6 +112,5 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
     except Exception as e:
         return {"success": False, "repo_url": repo_url, "error": str(e)}
     finally:
-        if temp_dir:
-            temp_dir.cleanup()
-
+        if temp_dir_obj:
+            temp_dir_obj.cleanup()

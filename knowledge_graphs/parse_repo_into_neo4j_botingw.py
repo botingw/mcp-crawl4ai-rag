@@ -26,6 +26,8 @@ from neo4j import AsyncGraphDatabase
 
 from src.repository_utils import clone_repository, get_repository_files
 
+from src.repository_utils import clone_repository, get_repository_files
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -484,49 +486,7 @@ class DirectNeo4jExtractor:
         if self.driver:
             await self.driver.close()
     
-    def clone_repo(self, repo_url: str, target_dir: str) -> str:
-        """Clone repository with shallow clone"""
-        logger.info(f"Cloning repository to: {target_dir}")
-        if os.path.exists(target_dir):
-            logger.info(f"Removing existing directory: {target_dir}")
-            try:
-                def handle_remove_readonly(func, path, exc):
-                    try:
-                        if os.path.exists(path):
-                            os.chmod(path, 0o777)
-                            func(path)
-                    except PermissionError:
-                        logger.warning(f"Could not remove {path} - file in use, skipping")
-                        pass
-                shutil.rmtree(target_dir, onerror=handle_remove_readonly)
-            except Exception as e:
-                logger.warning(f"Could not fully remove {target_dir}: {e}. Proceeding anyway...")
-        
-        logger.info(f"Running git clone from {repo_url}")
-        subprocess.run(['git', 'clone', '--depth', '1', repo_url, target_dir], check=True)
-        logger.info("Repository cloned successfully")
-        return target_dir
     
-    def get_python_files(self, repo_path: str) -> List[Path]:
-        """Get Python files, focusing on main source directories"""
-        python_files = []
-        exclude_dirs = {
-            'tests', 'test', '__pycache__', '.git', 'venv', 'env',
-            'node_modules', 'build', 'dist', '.pytest_cache', 'docs',
-            'examples', 'example', 'demo', 'benchmark'
-        }
-        
-        for root, dirs, files in os.walk(repo_path):
-            dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
-            
-            for file in files:
-                if file.endswith('.py') and not file.startswith('test_'):
-                    file_path = Path(root) / file
-                    if (file_path.stat().st_size < 500_000 and 
-                        file not in ['setup.py', 'conftest.py']):
-                        python_files.append(file_path)
-        
-        return python_files
     
     async def analyze_repository(self, repo_url: str, temp_dir: str = None):
         """Analyze repository and create nodes/relationships in Neo4j"""
@@ -536,17 +496,13 @@ class DirectNeo4jExtractor:
         # Clear existing data for this repository before re-processing
         await self.clear_repository_data(repo_name)
         
-        # Set default temp_dir to repos folder at script level
-        if temp_dir is None:
-            script_dir = Path(__file__).parent
-            temp_dir = str(script_dir / "repos" / repo_name)
-        
-        # Clone and analyze
-        repo_path = Path(self.clone_repo(repo_url, temp_dir))
-        
+        temp_dir_obj = clone_repository(repo_url)
+        repo_path = Path(temp_dir_obj.name)
+
         try:
             logger.info("Getting Python files...")
-            python_files = self.get_python_files(str(repo_path))
+            files = get_repository_files(str(repo_path))
+            python_files = files["python_files"]
             logger.info(f"Found {len(python_files)} Python files to analyze")
             
             # First pass: identify project modules
@@ -583,7 +539,7 @@ class DirectNeo4jExtractor:
             total_functions = sum(len(mod['functions']) for mod in modules_data)
             total_imports = sum(len(mod['imports']) for mod in modules_data)
             
-            print(f"\\n=== Direct Neo4j Repository Analysis for {repo_name} ===")
+            print(f"\n=== Direct Neo4j Repository Analysis for {repo_name} ===")
             print(f"Files processed: {len(modules_data)}")
             print(f"Classes created: {total_classes}")
             print(f"Methods created: {total_methods}")
@@ -593,23 +549,8 @@ class DirectNeo4jExtractor:
             logger.info(f"Successfully created Neo4j graph for {repo_name}")
             
         finally:
-            if os.path.exists(temp_dir):
-                logger.info(f"Cleaning up temporary directory: {temp_dir}")
-                try:
-                    def handle_remove_readonly(func, path, exc):
-                        try:
-                            if os.path.exists(path):
-                                os.chmod(path, 0o777)
-                                func(path)
-                        except PermissionError:
-                            logger.warning(f"Could not remove {path} - file in use, skipping")
-                            pass
-                    
-                    shutil.rmtree(temp_dir, onerror=handle_remove_readonly)
-                    logger.info("Cleanup completed")
-                except Exception as e:
-                    logger.warning(f"Cleanup failed: {e}. Directory may remain at {temp_dir}")
-                    # Don't fail the whole process due to cleanup issues
+            temp_dir_obj.cleanup()
+            logger.info("Cleanup completed")
     
     async def _create_graph(self, repo_name: str, modules_data: List[Dict]):
         """Create all nodes and relationships in Neo4j"""

@@ -238,3 +238,323 @@
 ║ <3 Playwright Team                                         ║
 ╚════════════════════════════════════════════════════════════╝
     +------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1855, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1852, in main
+  |     await mcp.run_stdio_async()
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 548, in run_stdio_async
+  |     async with stdio_server() as (read_stream, write_stream):
+  |                ^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 83, in stdio_server
+  |     async with anyio.create_task_group() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 86, in stdio_server
+    |     yield read_stream, write_stream
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 549, in run_stdio_async
+    |     await self._mcp_server.run(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/lowlevel/server.py", line 484, in run
+    |     lifespan_context = await stack.enter_async_context(self.lifespan(self))
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 120, in wrap
+    |     async with lifespan(app) as context:
+    |                ^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 144, in crawl4ai_lifespan
+    |     await crawler.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 193, in __aenter__
+    |     return await self.start()
+    |            ^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 176, in start
+    |     await self.crawler_strategy.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 111, in __aenter__
+    |     await self.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 121, in start
+    |     await self.browser_manager.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/browser_manager.py", line 572, in start
+    |     self.browser = await self.playwright.chromium.launch(**browser_args)
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 14451, in launch
+    |     await self._impl_obj.launch(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_browser_type.py", line 97, in launch
+    |     Browser, from_channel(await self._channel.send("launch", params))
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 61, in send
+    |     return await self._connection.wrap_api_call(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 528, in wrap_api_call
+    |     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+    | playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /Users/wangbo-ting/Library/Caches/ms-playwright/chromium-1169/chrome-mac/Chromium.app/Contents/MacOS/Chromium
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    +------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1855, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1852, in main
+  |     await mcp.run_stdio_async()
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 548, in run_stdio_async
+  |     async with stdio_server() as (read_stream, write_stream):
+  |                ^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 83, in stdio_server
+  |     async with anyio.create_task_group() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 86, in stdio_server
+    |     yield read_stream, write_stream
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 549, in run_stdio_async
+    |     await self._mcp_server.run(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/lowlevel/server.py", line 484, in run
+    |     lifespan_context = await stack.enter_async_context(self.lifespan(self))
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 120, in wrap
+    |     async with lifespan(app) as context:
+    |                ^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 144, in crawl4ai_lifespan
+    |     await crawler.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 193, in __aenter__
+    |     return await self.start()
+    |            ^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 176, in start
+    |     await self.crawler_strategy.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 111, in __aenter__
+    |     await self.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 121, in start
+    |     await self.browser_manager.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/browser_manager.py", line 572, in start
+    |     self.browser = await self.playwright.chromium.launch(**browser_args)
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 14451, in launch
+    |     await self._impl_obj.launch(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_browser_type.py", line 97, in launch
+    |     Browser, from_channel(await self._channel.send("launch", params))
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 61, in send
+    |     return await self._connection.wrap_api_call(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 528, in wrap_api_call
+    |     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+    | playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /Users/wangbo-ting/Library/Caches/ms-playwright/chromium-1169/chrome-mac/Chromium.app/Contents/MacOS/Chromium
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    +------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1855, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1852, in main
+  |     await mcp.run_stdio_async()
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 548, in run_stdio_async
+  |     async with stdio_server() as (read_stream, write_stream):
+  |                ^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 83, in stdio_server
+  |     async with anyio.create_task_group() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 86, in stdio_server
+    |     yield read_stream, write_stream
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 549, in run_stdio_async
+    |     await self._mcp_server.run(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/lowlevel/server.py", line 484, in run
+    |     lifespan_context = await stack.enter_async_context(self.lifespan(self))
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 120, in wrap
+    |     async with lifespan(app) as context:
+    |                ^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 144, in crawl4ai_lifespan
+    |     await crawler.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 193, in __aenter__
+    |     return await self.start()
+    |            ^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 176, in start
+    |     await self.crawler_strategy.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 111, in __aenter__
+    |     await self.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 121, in start
+    |     await self.browser_manager.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/browser_manager.py", line 572, in start
+    |     self.browser = await self.playwright.chromium.launch(**browser_args)
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 14451, in launch
+    |     await self._impl_obj.launch(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_browser_type.py", line 97, in launch
+    |     Browser, from_channel(await self._channel.send("launch", params))
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 61, in send
+    |     return await self._connection.wrap_api_call(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 528, in wrap_api_call
+    |     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+    | playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /Users/wangbo-ting/Library/Caches/ms-playwright/chromium-1169/chrome-mac/Chromium.app/Contents/MacOS/Chromium
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    +------------------------------------
+  + Exception Group Traceback (most recent call last):
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1855, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 1852, in main
+  |     await mcp.run_stdio_async()
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 548, in run_stdio_async
+  |     async with stdio_server() as (read_stream, write_stream):
+  |                ^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 83, in stdio_server
+  |     async with anyio.create_task_group() as tg:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/stdio.py", line 86, in stdio_server
+    |     yield read_stream, write_stream
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 549, in run_stdio_async
+    |     await self._mcp_server.run(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/lowlevel/server.py", line 484, in run
+    |     lifespan_context = await stack.enter_async_context(self.lifespan(self))
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 659, in enter_async_context
+    |     result = await _enter(cm)
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/mcp/server/fastmcp/server.py", line 120, in wrap
+    |     async with lifespan(app) as context:
+    |                ^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/.pyenv/versions/3.12.11/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/src/crawl4ai_mcp.py", line 144, in crawl4ai_lifespan
+    |     await crawler.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 193, in __aenter__
+    |     return await self.start()
+    |            ^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_webcrawler.py", line 176, in start
+    |     await self.crawler_strategy.__aenter__()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 111, in __aenter__
+    |     await self.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/async_crawler_strategy.py", line 121, in start
+    |     await self.browser_manager.start()
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/crawl4ai/browser_manager.py", line 572, in start
+    |     self.browser = await self.playwright.chromium.launch(**browser_args)
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/async_api/_generated.py", line 14451, in launch
+    |     await self._impl_obj.launch(
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_browser_type.py", line 97, in launch
+    |     Browser, from_channel(await self._channel.send("launch", params))
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 61, in send
+    |     return await self._connection.wrap_api_call(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wangbo-ting/git/langgraph-dev-navigator/mcp-crawl4ai-rag/.venv/lib/python3.12/site-packages/playwright/_impl/_connection.py", line 528, in wrap_api_call
+    |     raise rewrite_error(error, f"{parsed_st['apiName']}: {error}") from None
+    | playwright._impl._errors.Error: BrowserType.launch: Executable doesn't exist at /Users/wangbo-ting/Library/Caches/ms-playwright/chromium-1169/chrome-mac/Chromium.app/Contents/MacOS/Chromium
+╔════════════════════════════════════════════════════════════╗
+║ Looks like Playwright was just installed or updated.       ║
+║ Please run the following command to download new browsers: ║
+║                                                            ║
+║     playwright install                                     ║
+║                                                            ║
+║ <3 Playwright Team                                         ║
+╚════════════════════════════════════════════════════════════╝
+    +------------------------------------

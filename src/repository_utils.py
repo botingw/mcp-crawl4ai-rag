@@ -4,6 +4,21 @@ import tempfile
 import subprocess
 import os
 
+def validate_github_url(repo_url: str) -> Dict[str, Any]:
+    """Validate GitHub repository URL."""
+    if not repo_url or not isinstance(repo_url, str):
+        return {"valid": False, "error": "Repository URL is required"}
+    
+    repo_url = repo_url.strip()
+    
+    if not ("github.com" in repo_url.lower() or repo_url.endswith(".git")):
+        return {"valid": False, "error": "Please provide a valid GitHub repository URL"}
+    
+    if not (repo_url.startswith("https://") or repo_url.startswith("git@")):
+        return {"valid": False, "error": "Repository URL must start with https:// or git@"}
+    
+    return {"valid": True, "repo_name": repo_url.split('/')[-1].replace('.git', '')}
+
 def clone_repository(repo_url: str) -> tempfile.TemporaryDirectory:
     """Clones a repository to a temporary directory and returns the directory object."""
     temp_dir = tempfile.TemporaryDirectory()
@@ -30,7 +45,7 @@ def get_repository_files(repo_path: str) -> Dict[str, List[Path]]:
         'examples', 'example', 'demo', 'benchmark'
     }
     
-    doc_extensions = {'.md', '.mdx', '.rst', '.ipynb'}
+    doc_extensions = {'.md', '.mdx', '.rst', '.ipynb', '.txt'}
     
     for root, dirs, files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
