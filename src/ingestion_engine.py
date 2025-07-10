@@ -12,7 +12,7 @@ import sys
 from repository_utils import clone_repository, get_repository_files, validate_github_url
 
 
-async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str) -> Dict[str, Any]:
+async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str, repo_path: str) -> Dict[str, Any]:
     """Processes documentation files and ingests them into the RAG system."""
     from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
     from src.crawl4ai_mcp import smart_chunk_markdown, extract_section_info, process_code_example
@@ -20,7 +20,8 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
     docs_content = []
     for doc_file in doc_files:
         with open(doc_file, 'r', encoding='utf-8') as f:
-            docs_content.append({"url": doc_file.as_uri(), "markdown": f.read()})
+            relative_path = str(doc_file.relative_to(repo_path))
+            docs_content.append({"url": relative_path, "markdown": f.read()})
 
     urls, chunk_numbers, contents, metadatas = [], [], [], []
     source_content_map = {}
@@ -105,7 +106,7 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
 
         if "docs" in ingest_types:
             supabase_client = get_supabase_client()
-            results["docs_ingestion"] = await ingest_docs_to_rag(supabase_client, files["doc_files"], f"github.com/{repo_name}")
+            results["docs_ingestion"] = await ingest_docs_to_rag(supabase_client, files["doc_files"], f"github.com/{repo_name}", temp_dir_obj.name)
 
         return {"success": True, "repo_url": repo_url, "results": results}
 

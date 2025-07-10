@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import tempfile
 import subprocess
@@ -32,9 +32,9 @@ def clone_repository(repo_url: str) -> tempfile.TemporaryDirectory:
         error_message += f"Stdout: {e.stdout.strip()}"
         raise RuntimeError(error_message) from e
 
-def get_repository_files(repo_path: str) -> Dict[str, List[Path]]:
+def get_repository_files(repo_path: str, include_folders: Optional[List[str]] = None) -> Dict[str, List[Path]]:
     """
-    Get Python and documentation files from a repository.
+    Get Python and documentation files from a repository, optionally filtering by included folders.
     """
     python_files = []
     doc_files = []
@@ -47,12 +47,48 @@ def get_repository_files(repo_path: str) -> Dict[str, List[Path]]:
     
     doc_extensions = {'.md', '.mdx', '.rst', '.ipynb', '.txt'}
     
+    # Normalize include_folders to be absolute paths from repo_path
+    normalized_include_folders = []
+    if include_folders:
+        for folder in include_folders:
+            normalized_include_folders.append(Path(repo_path) / folder)
+
     for root, dirs, files in os.walk(repo_path):
+        current_path = Path(root)
+        
+        # Filter directories to traverse
         dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
         
+        # If include_folders are specified, further filter directories
+        if normalized_include_folders:
+            filtered_dirs = []
+            for d in dirs:
+                dir_full_path = current_path / d
+                should_include_dir = False
+                for included_folder_path in normalized_include_folders:
+                    # Check if the current directory is the included folder itself
+                    # or if the included folder is a subdirectory of the current directory
+                    if dir_full_path == included_folder_path or included_folder_path.is_relative_to(dir_full_path):
+                        should_include_dir = True
+                        break
+                if should_include_dir:
+                    filtered_dirs.append(d)
+            dirs[:] = filtered_dirs
+
         for file in files:
-            file_path = Path(root) / file
+            file_path = current_path / file
             
+            # If include_folders are specified, check if the file is within one of them
+            if normalized_include_folders:
+                is_file_in_included_folder = False
+                for included_folder_path in normalized_include_folders:
+                    # Check if the file_path is within the included_folder_path
+                    if file_path.is_relative_to(included_folder_path):
+                        is_file_in_included_folder = True
+                        break
+                if not is_file_in_included_folder:
+                    continue # Skip this file if it's not in an included folder
+
             if file.endswith('.py') and not file.startswith('test_'):
                 if (file_path.stat().st_size < 500_000 and 
                     file not in ['setup.py', 'conftest.py']):
