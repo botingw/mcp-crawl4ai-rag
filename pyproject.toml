@@ -5,6 +5,8 @@ description = "MCP server for integrating web crawling and RAG into AI agents an
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "numpy==1.26.4", # resolve issue numpy 2 not work
+    "torch==2.2.2", # resolve issue macos x86_64 not supported
     "crawl4ai==0.6.2",
     "mcp==1.7.1",
     "supabase==2.15.1",
