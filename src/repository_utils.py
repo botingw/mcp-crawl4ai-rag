@@ -59,21 +59,7 @@ def get_repository_files(repo_path: str, include_folders: Optional[List[str]] = 
         # Filter directories to traverse
         dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
         
-        # If include_folders are specified, further filter directories
-        if normalized_include_folders:
-            filtered_dirs = []
-            for d in dirs:
-                dir_full_path = current_path / d
-                should_include_dir = False
-                for included_folder_path in normalized_include_folders:
-                    # Check if the current directory is the included folder itself
-                    # or if the included folder is a subdirectory of the current directory
-                    if dir_full_path == included_folder_path or included_folder_path.is_relative_to(dir_full_path):
-                        should_include_dir = True
-                        break
-                if should_include_dir:
-                    filtered_dirs.append(d)
-            dirs[:] = filtered_dirs
+        
 
         for file in files:
             file_path = current_path / file

@@ -16,7 +16,8 @@ logging.getLogger("httpcore").setLevel(logging.WARNING) # httpx dependency
 
 # print(f"sys.path in test_ingestion.py (before import): {sys.path}")
 
-from src.ingestion_engine import ingest_repository
+# from src.ingestion_engine import ingest_repository
+from crawl4ai_mcp.ingestion_engine import ingest_repository
 
 async def run_test_no_filter(repo_url: str, ingest_types: list):
     print("\n--- Running Ingestion without folder filter ---")
