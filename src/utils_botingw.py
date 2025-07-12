@@ -13,7 +13,69 @@ import openai
 import re
 import time
 import random
-from .config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES, MAX_WORKERS, MAX_TOKENS_PER_REQUEST
+import tiktoken
+from .config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES, MAX_WORKERS, MAX_TOKENS_PER_REQUEST, TPM_LIMIT
+import threading
+
+def num_tokens_from_string(string: str, model_name: str) -> int:
+    """
+    Returns the number of tokens in a text string.
+    """
+    ENCODING_MAP = {
+        "gpt-4": "cl100k_base",
+        "gpt-3.5-turbo": "cl100k_base",
+        "text-embedding-ada-002": "cl100k_base",
+    }
+    try:
+        encoding_name = ENCODING_MAP.get(model_name) or tiktoken.encoding_for_model(model_name).name
+    except KeyError:
+        encoding_name = "cl100k_base"
+    encoding = tiktoken.get_encoding(encoding_name)
+    return len(encoding.encode(string))
+
+class TokenBucketRateLimiter:
+    """
+    A thread-safe token bucket rate limiter for proactive throttling.
+    """
+    def __init__(self, capacity, refill_time_seconds):
+        """
+        Initializes the token bucket.
+        
+        :param capacity: The total number of tokens the bucket can hold (e.g., your TPM limit).
+        :param refill_time_seconds: The time in seconds for the bucket to refill completely (e.g., 60).
+        """
+        self.capacity = float(capacity)
+        self._tokens = float(capacity)
+        self.refill_rate = capacity / refill_time_seconds
+        self.last_refill_time = time.monotonic()
+        self.lock = threading.Lock()
+
+    def _refill(self):
+        """Refills the bucket with tokens based on elapsed time. This is an internal method."""
+        now = time.monotonic()
+        time_passed = now - self.last_refill_time
+        new_tokens = time_passed * self.refill_rate
+        self._tokens = min(self.capacity, self._tokens + new_tokens)
+        self.last_refill_time = now
+
+    def acquire(self, tokens_needed):
+        """
+        Acquires a specified number of tokens, waiting if necessary.
+        This is the main method to call before an API request.
+        """
+        if tokens_needed > self.capacity:
+            raise ValueError("Requested tokens exceed the bucket's total capacity.")
+        with self.lock:
+            self._refill()
+            if tokens_needed > self._tokens:
+                required_additional_tokens = tokens_needed - self._tokens
+                wait_time = required_additional_tokens / self.refill_rate
+                print(f"[THROTTLER]: Not enough tokens. Need {tokens_needed:.0f}, have {self._tokens:.0f}. Proactively waiting for {wait_time:.2f} seconds.")
+                time.sleep(wait_time)
+                self._refill()
+            self._tokens -= tokens_needed
+
+rate_limiter = TokenBucketRateLimiter(TPM_LIMIT, 60)
 
 def retry_with_exponential_backoff(func):
     """Retry a function with exponential backoff for OpenAI API calls."""
@@ -41,6 +103,7 @@ def retry_with_exponential_backoff(func):
                 time.sleep(delay)
 
     return wrapper
+
 
 # Load OpenAI API key for embeddings
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -134,6 +197,10 @@ Here is the chunk we want to situate within the whole document
 </chunk> 
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
+        input_tokens = num_tokens_from_string(prompt, model_choice)
+        estimated_output_tokens = 200  # As in the original function
+        rate_limiter.acquire(input_tokens + estimated_output_tokens)
+
         response = openai.chat.completions.create(
             model=model_choice,
             messages=[
@@ -192,42 +259,55 @@ def add_documents_to_supabase(
         url_to_full_document: Dictionary mapping URLs to their full document content
         batch_size: Size of each batch for insertion
     """
+    # Get unique URLs to delete existing records
     unique_urls = list(set(urls))
     
+    # Delete existing records for these URLs in a single operation
     try:
         if unique_urls:
+            # Use the .in_() filter to delete all records with matching URLs
             client.table("crawled_pages").delete().in_("url", unique_urls).execute()
     except Exception as e:
         print(f"Batch delete failed: {e}. Trying one-by-one deletion as fallback.")
+        # Fallback: delete records one by one
         for url in unique_urls:
             try:
                 client.table("crawled_pages").delete().eq("url", url).execute()
             except Exception as inner_e:
                 print(f"Error deleting record for URL {url}: {inner_e}")
+                # Continue with the next URL even if one fails
     
+    # Check if MODEL_CHOICE is set for contextual embeddings
     use_contextual_embeddings = os.getenv("USE_CONTEXTUAL_EMBEDDINGS", "false") == "true"
     print(f"\n\nUse contextual embeddings: {use_contextual_embeddings}\n\n")
     
+    # Process in batches to avoid memory issues
     for i in range(0, len(contents), batch_size):
         batch_end = min(i + batch_size, len(contents))
         
+        # Get batch slices
         batch_urls = urls[i:batch_end]
         batch_chunk_numbers = chunk_numbers[i:batch_end]
         batch_contents = contents[i:batch_end]
         batch_metadatas = metadatas[i:batch_end]
         
+        # Apply contextual embedding to each chunk if MODEL_CHOICE is set
         if use_contextual_embeddings:
+            # Prepare arguments for parallel processing
             process_args = []
             for j, content in enumerate(batch_contents):
                 url = batch_urls[j]
                 full_document = url_to_full_document.get(url, "")
                 process_args.append((url, content, full_document))
             
+            # Process in parallel using ThreadPoolExecutor
             contextual_contents = []
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                # Submit all tasks and collect results
                 future_to_idx = {executor.submit(process_chunk_with_context, arg): idx 
                                 for idx, arg in enumerate(process_args)}
                 
+                # Process results as they complete
                 for future in concurrent.futures.as_completed(future_to_idx):
                     idx = future_to_idx[future]
                     try:
@@ -237,20 +317,27 @@ def add_documents_to_supabase(
                             batch_metadatas[idx]["contextual_embedding"] = True
                     except Exception as e:
                         print(f"Error processing chunk {idx}: {e}")
+                        # Use original content as fallback
                         contextual_contents.append(batch_contents[idx])
             
+            # Sort results back into original order if needed
             if len(contextual_contents) != len(batch_contents):
                 print(f"Warning: Expected {len(batch_contents)} results but got {len(contextual_contents)}")
+                # Use original contents as fallback
                 contextual_contents = batch_contents
         else:
+            # If not using contextual embeddings, use original contents
             contextual_contents = batch_contents
         
+        # Create embeddings for the entire batch at once
         batch_embeddings = create_embeddings_batch(contextual_contents)
         
         batch_data = []
         for j in range(len(contextual_contents)):
+            # Extract metadata fields
             chunk_size = len(contextual_contents[j])
             
+            # Prepare data for insertion
             data = {
                 "url": batch_urls[j],
                 "chunk_number": batch_chunk_numbers[j],
@@ -265,12 +352,14 @@ def add_documents_to_supabase(
             
             batch_data.append(data)
         
+        # Insert batch into Supabase with retry logic
         max_retries = 3
         retry_delay = 1.0
         
         for retry in range(max_retries):
             try:
                 client.table("crawled_pages").insert(batch_data).execute()
+                # Success - break out of retry loop
                 break
             except Exception as e:
                 if retry < max_retries - 1:
@@ -279,7 +368,9 @@ def add_documents_to_supabase(
                     time.sleep(retry_delay)
                     retry_delay *= 2
                 else:
+                    # Final attempt failed
                     print(f"Failed to insert batch after {max_retries} attempts: {e}")
+                    # Optionally, try inserting records one by one as a last resort
                     print("Attempting to insert records individually...")
                     successful_inserts = 0
                     for record in batch_data:
@@ -310,14 +401,18 @@ def search_documents(
     Returns:
         List of matching documents
     """
+    # Create embedding for the query
     query_embedding = create_embedding(query)
     
+    # Execute the search using the match_crawled_pages function
     try:
+        # Only include filter parameter if filter_metadata is provided and not empty
         params = {
             'query_embedding': query_embedding,
             'match_count': match_count
         }
         
+        # Only add the filter if it's actually provided and not empty
         if filter_metadata:
             params['filter'] = filter_metadata
         
@@ -342,12 +437,15 @@ def extract_code_blocks(markdown_content: str, min_length: int = 1000) -> List[D
     """
     code_blocks = []
     
+    # Skip if content starts with triple backticks (edge case for files wrapped in backticks)
     content = markdown_content.strip()
     start_offset = 0
     if content.startswith('```'):
+        # Skip the first triple backticks
         start_offset = 3
         print("Skipping initial triple backticks")
     
+    # Find all occurrences of triple backticks
     backtick_positions = []
     pos = start_offset
     while True:
@@ -357,15 +455,19 @@ def extract_code_blocks(markdown_content: str, min_length: int = 1000) -> List[D
         backtick_positions.append(pos)
         pos += 3
     
+    # Process pairs of backticks
     i = 0
     while i < len(backtick_positions) - 1:
         start_pos = backtick_positions[i]
         end_pos = backtick_positions[i + 1]
         
+        # Extract the content between backticks
         code_section = markdown_content[start_pos+3:end_pos]
         
+        # Check if there's a language specifier on the first line
         lines = code_section.split('\n', 1)
         if len(lines) > 1:
+            # Check if first line is a language specifier (no spaces, common language names)
             first_line = lines[0].strip()
             if first_line and not ' ' in first_line and len(first_line) < 20:
                 language = first_line
@@ -377,13 +479,16 @@ def extract_code_blocks(markdown_content: str, min_length: int = 1000) -> List[D
             language = ""
             code_content = code_section.strip()
         
+        # Skip if code block is too short
         if len(code_content) < min_length:
-            i += 2
+            i += 2  # Move to next pair
             continue
         
+        # Extract context before (1000 chars)
         context_start = max(0, start_pos - 1000)
         context_before = markdown_content[context_start:start_pos].strip()
         
+        # Extract context after (1000 chars)
         context_end = min(len(markdown_content), end_pos + 3 + 1000)
         context_after = markdown_content[end_pos + 3:context_end].strip()
         
@@ -395,9 +500,11 @@ def extract_code_blocks(markdown_content: str, min_length: int = 1000) -> List[D
             'full_context': f"{context_before}\n\n{code_content}\n\n{context_after}"
         })
         
+        # Move to next pair (skip the closing backtick we just processed)
         i += 2
     
     return code_blocks
+
 
 
 @retry_with_exponential_backoff
@@ -415,6 +522,7 @@ def generate_code_example_summary(code: str, context_before: str, context_after:
     """
     model_choice = os.getenv("MODEL_CHOICE")
     
+    # Create the prompt
     prompt = f"""<context_before>
 {context_before[-500:] if len(context_before) > 500 else context_before}
 </context_before>
@@ -430,6 +538,10 @@ def generate_code_example_summary(code: str, context_before: str, context_after:
 Based on the code example and its surrounding context, provide a concise summary (2-3 sentences) that describes what this code example demonstrates and its purpose. Focus on the practical application and key concepts illustrated.
 """
     
+    input_tokens = num_tokens_from_string(prompt, model_choice)
+    estimated_output_tokens = 100 # As in the original function
+    rate_limiter.acquire(input_tokens + estimated_output_tokens)
+
     try:
         response = openai.chat.completions.create(
             model=model_choice,
@@ -472,6 +584,7 @@ def add_code_examples_to_supabase(
     if not urls:
         return
         
+    # Delete existing records for these URLs
     unique_urls = list(set(urls))
     for url in unique_urls:
         try:
@@ -479,30 +592,37 @@ def add_code_examples_to_supabase(
         except Exception as e:
             print(f"Error deleting existing code examples for {url}: {e}")
     
+    # Process in batches
     total_items = len(urls)
     for i in range(0, total_items, batch_size):
         batch_end = min(i + batch_size, total_items)
         batch_texts = []
         
+        # Create combined texts for embedding (code + summary)
         for j in range(i, batch_end):
             combined_text = f"{code_examples[j]}\n\nSummary: {summaries[j]}"
             batch_texts.append(combined_text)
         
+        # Create embeddings for the batch
         embeddings = create_embeddings_batch(batch_texts)
         
+        # Check if embeddings are valid (not all zeros)
         valid_embeddings = []
         for embedding in embeddings:
             if embedding and not all(v == 0.0 for v in embedding):
                 valid_embeddings.append(embedding)
             else:
                 print(f"Warning: Zero or invalid embedding detected, creating new one...")
+                # Try to create a single embedding as fallback
                 single_embedding = create_embedding(batch_texts[len(valid_embeddings)])
                 valid_embeddings.append(single_embedding)
         
+        # Prepare batch data
         batch_data = []
         for j, embedding in enumerate(valid_embeddings):
             idx = i + j
             
+            # Extract source_id from URL
             parsed_url = urlparse(urls[idx])
             source_id = parsed_url.netloc or parsed_url.path
             
@@ -516,12 +636,14 @@ def add_code_examples_to_supabase(
                 'embedding': embedding
             })
         
+        # Insert batch into Supabase with retry logic
         max_retries = 3
         retry_delay = 1.0
         
         for retry in range(max_retries):
             try:
                 client.table('code_examples').insert(batch_data).execute()
+                # Success - break out of retry loop
                 break
             except Exception as e:
                 if retry < max_retries - 1:
@@ -530,7 +652,9 @@ def add_code_examples_to_supabase(
                     time.sleep(retry_delay)
                     retry_delay *= 2
                 else:
+                    # Final attempt failed
                     print(f"Failed to insert batch after {max_retries} attempts: {e}")
+                    # Optionally, try inserting records one by one as a last resort
                     print("Attempting to insert records individually...")
                     successful_inserts = 0
                     for record in batch_data:
@@ -558,12 +682,14 @@ def update_source_info(client: Client, source_id: str, summary: str, word_count:
         word_count: Total word count for the source
     """
     try:
+        # Try to update existing source
         result = client.table('sources').update({
             'summary': summary,
             'total_word_count': word_count,
             'updated_at': 'now()'
         }).eq('source_id', source_id).execute()
         
+        # If no rows were updated, insert new source
         if not result.data:
             client.table('sources').insert({
                 'source_id': source_id,
@@ -593,15 +719,19 @@ def extract_source_summary(source_id: str, content: str, max_length: int = 500) 
     Returns:
         A summary string
     """
+    # Default summary if we can't extract anything meaningful
     default_summary = f"Content from {source_id}"
     
     if not content or len(content.strip()) == 0:
         return default_summary
     
+    # Get the model choice from environment variables
     model_choice = os.getenv("MODEL_CHOICE")
     
+    # Limit content length to avoid token limits
     truncated_content = content[:MAX_TOKENS_PER_REQUEST]
     
+    # Create the prompt for generating the summary
     prompt = f"""<source_content>
 {truncated_content}
 </source_content>
@@ -610,6 +740,7 @@ The above content is from the documentation for '{source_id}'. Please provide a 
 """
     
     try:
+        # Call the OpenAI API to generate the summary
         response = openai.chat.completions.create(
             model=model_choice,
             messages=[
@@ -620,8 +751,10 @@ The above content is from the documentation for '{source_id}'. Please provide a 
             max_tokens=150
         )
         
+        # Extract the generated summary
         summary = response.choices[0].message.content.strip()
         
+        # Ensure the summary is not too long
         if len(summary) > max_length:
             summary = summary[:max_length] + "..."
             
@@ -652,19 +785,26 @@ def search_code_examples(
     Returns:
         List of matching code examples
     """
+    # Create a more descriptive query for better embedding match
+    # Since code examples are embedded with their summaries, we should make the query more descriptive
     enhanced_query = f"Code example for {query}\n\nSummary: Example code showing {query}"
     
+    # Create embedding for the enhanced query
     query_embedding = create_embedding(enhanced_query)
     
+    # Execute the search using the match_code_examples function
     try:
+        # Only include filter parameter if filter_metadata is provided and not empty
         params = {
             'query_embedding': query_embedding,
             'match_count': match_count
         }
         
+        # Only add the filter if it's actually provided and not empty
         if filter_metadata:
             params['filter'] = filter_metadata
             
+        # Add source filter if provided
         if source_id:
             params['source_filter'] = source_id
         
