@@ -200,7 +200,8 @@ Here is the chunk we want to situate within the whole document
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
     prompt_tokens = num_tokens_from_string(prompt, model_choice)
-    stats_collector.log_raw_chunk(source_file, chunk_index, num_tokens_from_string(chunk, model_choice))
+    raw_chunk_tokens=num_tokens_from_string(chunk, model_choice)
+    stats_collector.log_raw_chunk(source_file, chunk_index, raw_chunk_tokens)
 
     try:
         rate_limiter.acquire(prompt_tokens + 200) # Estimate 200 output tokens
@@ -218,9 +219,10 @@ Please give a short succinct context to situate this chunk within the overall do
         completion_tokens = response.usage.completion_tokens
         total_tokens = response.usage.total_tokens
         
-        stats_collector.log_api_call(
+        stats_collector.log_chunk_api_call(
             source_file=source_file,
             chunk_index=chunk_index,
+            raw_chunk_tokens=raw_chunk_tokens,
             call_type="contextual_embedding",
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
@@ -234,9 +236,10 @@ Please give a short succinct context to situate this chunk within the overall do
         return contextual_text, True
     
     except Exception as e:
-        stats_collector.log_api_call(
+        stats_collector.log_chunk_api_call(
             source_file=source_file,
             chunk_index=chunk_index,
+            raw_chunk_tokens=raw_chunk_tokens,
             call_type="contextual_embedding",
             prompt_tokens=prompt_tokens,
             completion_tokens=0,
@@ -586,9 +589,10 @@ Based on the code example and its surrounding context, provide a concise summary
         completion_tokens = response.usage.completion_tokens
         total_tokens = response.usage.total_tokens
 
-        stats_collector.log_api_call(
+        stats_collector.log_chunk_api_call(
             source_file=source_file,
             chunk_index=chunk_index,
+            raw_chunk_tokens=num_tokens_from_string(code, model_choice),
             call_type="code_example_summary",
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
@@ -599,9 +603,10 @@ Based on the code example and its surrounding context, provide a concise summary
         return response.choices[0].message.content.strip()
     
     except Exception as e:
-        stats_collector.log_api_call(
+        stats_collector.log_chunk_api_call(
             source_file=source_file,
             chunk_index=chunk_index,
+            raw_chunk_tokens=num_tokens_from_string(code, model_choice),
             call_type="code_example_summary",
             prompt_tokens=prompt_tokens,
             completion_tokens=0,
@@ -792,6 +797,9 @@ def extract_source_summary(source_id: str, content: str, max_length: int = 500) 
 The above content is from the documentation for '{source_id}'. Please provide a concise summary (3-5 sentences) that describes what this library/tool/framework is about. The summary should help understand what the library/tool/framework accomplishes and the purpose.
 """
     
+    prompt_tokens = num_tokens_from_string(prompt, model_choice)
+    raw_doc_tokens = num_tokens_from_string(content, model_choice)
+
     try:
         # Call the OpenAI API to generate the summary
         response = openai.chat.completions.create(
@@ -804,6 +812,19 @@ The above content is from the documentation for '{source_id}'. Please provide a 
             max_tokens=150
         )
         
+        completion_tokens = response.usage.completion_tokens
+        total_tokens = response.usage.total_tokens
+
+        stats_collector.log_source_api_call(
+            source_id=source_id,
+            raw_doc_tokens=raw_doc_tokens,
+            call_type="source_summary",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            status="Success"
+        )
+
         # Extract the generated summary
         summary = response.choices[0].message.content.strip()
         
@@ -814,6 +835,16 @@ The above content is from the documentation for '{source_id}'. Please provide a 
         return summary
     
     except Exception as e:
+        stats_collector.log_source_api_call(
+            source_id=source_id,
+            raw_doc_tokens=raw_doc_tokens,
+            call_type="source_summary",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=0,
+            total_tokens=prompt_tokens,
+            status="Fail",
+            error_details=str(e)
+        )
         print(f"Error generating summary with LLM for {source_id}: {e}. Using default summary.")
         return default_summary
 
