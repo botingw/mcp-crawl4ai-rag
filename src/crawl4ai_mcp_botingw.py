@@ -1,3 +1,4 @@
+
 """
 MCP server for web crawling with Crawl4AI.
 
@@ -24,43 +25,9 @@ import re
 import concurrent.futures
 import sys
 
-'''from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
-from .config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES
-import time''
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, MemoryAdaptiveDispatcher
 
-'''def retry_with_exponential_backoff_async(func):
-    """Retry an async function with exponential backoff."""
-    async def wrapper(*args, **kwargs):
-        num_retries = 0
-        delay = INITIAL_DELAY
-        while True:
-            try:
-                return await func(*args, **kwargs)
-            except requests.exceptions.RequestException as e:
-                num_retries += 1
-                if num_retries > MAX_RETRIES:
-                    raise Exception(f"Maximum number of retries ({MAX_RETRIES}) exceeded.")
-                delay *= EXPONENTIAL_BASE * (1 + JITTER * random.random())
-                await asyncio.sleep(delay)
-            except Exception as e:
-                raise e
-    return wrapper'''
-    """Retry a function with exponential backoff."""
-    def wrapper(*args, **kwargs):
-        num_retries = 0
-        delay = INITIAL_DELAY
-        while True:
-            try:
-                return func(*args, **kwargs)
-            except requests.exceptions.RequestException as e:
-                num_retries += 1
-                if num_retries > MAX_RETRIES:
-                    raise Exception(f"Maximum number of retries ({MAX_RETRIES}) exceeded.")
-                delay *= EXPONENTIAL_BASE * (1 + JITTER * random.random())
-                time.sleep(delay)
-            except Exception as e:
-                raise e
-    return wrapper'''
+# Add knowledge_graphs folder to path for importing knowledge graph modules
 knowledge_graphs_path = Path(__file__).resolve().parent.parent / 'knowledge_graphs'
 sys.path.append(str(knowledge_graphs_path))
 
@@ -150,11 +117,11 @@ def validate_github_url(repo_url: str) -> Dict[str, Any]:
 @dataclass
 class Crawl4AIContext:
     """Context for the Crawl4AI MCP server."""
-    crawler: AsyncWebCrawler
-    supabase_client: Client
-    reranking_model: Optional[CrossEncoder] = None
-    knowledge_validator: Optional[Any] = None  # KnowledgeGraphValidator when available
-    repo_extractor: Optional[Any] = None       # DirectNeo4jExtractor when available
+crawler: AsyncWebCrawler
+supabase_client: Client
+reranking_model: Optional[CrossEncoder] = None
+knowledge_validator: Optional[Any] = None  # KnowledgeGraphValidator when available
+repo_extractor: Optional[Any] = None       # DirectNeo4jExtractor when available
 
 @asynccontextmanager
 async def crawl4ai_lifespan(server: FastMCP) -> AsyncIterator[Crawl4AIContext]:
@@ -320,8 +287,7 @@ def is_txt(url: str) -> bool:
     """
     return url.endswith('.txt')
 
-'''@retry_with_exponential_backoff
-def parse_sitemap(sitemap_url: str) -> List[str]:'''
+def parse_sitemap(sitemap_url: str) -> List[str]:
     """
     Parse a sitemap and extract URLs.
     
@@ -421,9 +387,8 @@ def process_code_example(args):
     code, context_before, context_after = args
     return generate_code_example_summary(code, context_before, context_after)
 
-'''@mcp.tool()
-@retry_with_exponential_backoff_async
-async def crawl_single_page(ctx: Context, url: str) -> str:'''
+@mcp.tool()
+async def crawl_single_page(ctx: Context, url: str) -> str:
     """
     Crawl a single web page and store its content in Supabase.
     
@@ -562,9 +527,8 @@ async def crawl_single_page(ctx: Context, url: str) -> str:'''
             "error": str(e)
         }, indent=2)
 
-'''@mcp.tool()
-@retry_with_exponential_backoff_async
-async def smart_crawl_url(ctx: Context, url: str, max_depth: int = 3, max_concurrent: int = 10, chunk_size: int = 5000) -> str:'''
+@mcp.tool()
+async def smart_crawl_url(ctx: Context, url: str, max_depth: int = 3, max_concurrent: int = 10, chunk_size: int = 5000) -> str:
     """
     Intelligently crawl a URL based on its type and store content in Supabase.
     
@@ -1213,7 +1177,7 @@ async def query_knowledge_graph(ctx: Context, command: str) -> str:
     
     **⚠️ IMPORTANT: Always start with the `repos` command first!**
     Before using any other commands, run `repos` to see what repositories are available
-    in your knowledge graph. This will help you understand what data you can explore.
+    in your knowledge graph.
     
     ## Available Commands:
     

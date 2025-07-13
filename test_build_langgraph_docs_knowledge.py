@@ -17,7 +17,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING) # httpx dependency
 # sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from src.ingestion_engine import ingest_repository
-# from crawl4ai_mcp.ingestion_engine import ingest_repository
+from src.stats_collector import stats_collector
 
 async def main():
     """
@@ -32,11 +32,14 @@ async def main():
     # --- Configuration ---
     repo_url = "https://github.com/langchain-ai/langgraph.git"
     ingest_types = ["docs"]
-    include_folders = ["docs/docs"]
+    include_folders = ["docs/docs/how-tos"]
 
     print(f"--- Starting Knowledge Base Build for: {repo_url} ---")
     print(f"Ingestion types: {ingest_types}")
     print(f"Included folders: {include_folders}")
+
+    # --- Reset Stats Collector ---
+    stats_collector.reset()
 
     # --- Run Ingestion ---
     result = await ingest_repository(repo_url, ingest_types, include_folders=include_folders)
@@ -50,6 +53,10 @@ async def main():
     else:
         print("\n--- Knowledge Base build failed. ---")
         print(f"Error details: {result.get('error')}")
+
+    # --- Print Stats Report ---
+    print("\n--- Ingestion Statistics Report ---")
+    print(stats_collector.get_report())
 
 if __name__ == "__main__":
     # Ensure you have the necessary environment variables set in .env:

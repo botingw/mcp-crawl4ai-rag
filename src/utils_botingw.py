@@ -14,6 +14,7 @@ import re
 import time
 import random
 import tiktoken
+from .stats_collector import stats_collector
 from .config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES, MAX_WORKERS, MAX_TOKENS_PER_REQUEST, TPM_LIMIT
 import threading
 
@@ -172,13 +173,15 @@ def create_embedding(text: str) -> List[float]:
         return [0.0] * 1536
 
 @retry_with_exponential_backoff
-def generate_contextual_embedding(full_document: str, chunk: str) -> Tuple[str, bool]:
+def generate_contextual_embedding(full_document: str, chunk: str, source_file: str, chunk_index: int) -> Tuple[str, bool]:
     """
     Generate contextual information for a chunk within a document to improve retrieval.
     
     Args:
         full_document: The complete document text
         chunk: The specific chunk of text to generate context for
+        source_file: The source file of the chunk
+        chunk_index: The index of the chunk
         
     Returns:
         Tuple containing:
@@ -187,8 +190,7 @@ def generate_contextual_embedding(full_document: str, chunk: str) -> Tuple[str, 
     """
     model_choice = os.getenv("MODEL_CHOICE")
     
-    try:
-        prompt = f"""<document> 
+    prompt = f"""<document> 
 {full_document[:MAX_TOKENS_PER_REQUEST]} 
 </document>
 Here is the chunk we want to situate within the whole document 
@@ -197,9 +199,11 @@ Here is the chunk we want to situate within the whole document
 </chunk> 
 Please give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
 
-        input_tokens = num_tokens_from_string(prompt, model_choice)
-        estimated_output_tokens = 200  # As in the original function
-        rate_limiter.acquire(input_tokens + estimated_output_tokens)
+    prompt_tokens = num_tokens_from_string(prompt, model_choice)
+    stats_collector.log_raw_chunk(source_file, chunk_index, num_tokens_from_string(chunk, model_choice))
+
+    try:
+        rate_limiter.acquire(prompt_tokens + 200) # Estimate 200 output tokens
 
         response = openai.chat.completions.create(
             model=model_choice,
@@ -211,13 +215,35 @@ Please give a short succinct context to situate this chunk within the overall do
             max_tokens=200
         )
         
-        context = response.choices[0].message.content.strip()
+        completion_tokens = response.usage.completion_tokens
+        total_tokens = response.usage.total_tokens
         
+        stats_collector.log_api_call(
+            source_file=source_file,
+            chunk_index=chunk_index,
+            call_type="contextual_embedding",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            status="Success"
+        )
+        
+        context = response.choices[0].message.content.strip()
         contextual_text = f"{context}\n---\n{chunk}"
         
         return contextual_text, True
     
     except Exception as e:
+        stats_collector.log_api_call(
+            source_file=source_file,
+            chunk_index=chunk_index,
+            call_type="contextual_embedding",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=0,
+            total_tokens=prompt_tokens,
+            status="Fail",
+            error_details=str(e)
+        )
         print(f"Error generating contextual embedding: {e}. Using original chunk instead.")
         return chunk, False
 
@@ -227,15 +253,15 @@ def process_chunk_with_context(args):
     This function is designed to be used with concurrent.futures.
     
     Args:
-        args: Tuple containing (url, content, full_document)
+        args: Tuple containing (url, content, full_document, chunk_index)
         
     Returns:
         Tuple containing:
         - The contextual text that situates the chunk within the document
         - Boolean indicating if contextual embedding was performed
     """
-    url, content, full_document = args
-    return generate_contextual_embedding(full_document, content)
+    url, content, full_document, chunk_index = args
+    return generate_contextual_embedding(full_document, content, url, chunk_index)
 
 def add_documents_to_supabase(
     client: Client, 
@@ -297,8 +323,9 @@ def add_documents_to_supabase(
             process_args = []
             for j, content in enumerate(batch_contents):
                 url = batch_urls[j]
+                chunk_index = batch_chunk_numbers[j]
                 full_document = url_to_full_document.get(url, "")
-                process_args.append((url, content, full_document))
+                process_args.append((url, content, full_document, chunk_index))
             
             # Process in parallel using ThreadPoolExecutor
             contextual_contents = []
@@ -508,7 +535,7 @@ def extract_code_blocks(markdown_content: str, min_length: int = 1000) -> List[D
 
 
 @retry_with_exponential_backoff
-def generate_code_example_summary(code: str, context_before: str, context_after: str) -> str:
+def generate_code_example_summary(code: str, context_before: str, context_after: str, source_file: str, chunk_index: int) -> str:
     """
     Generate a summary for a code example using its surrounding context.
     
@@ -516,6 +543,8 @@ def generate_code_example_summary(code: str, context_before: str, context_after:
         code: The code example
         context_before: Context before the code
         context_after: Context after the code
+        source_file: The source file of the code example
+        chunk_index: The index of the chunk containing the code example
         
     Returns:
         A summary of what the code example demonstrates
@@ -538,11 +567,12 @@ def generate_code_example_summary(code: str, context_before: str, context_after:
 Based on the code example and its surrounding context, provide a concise summary (2-3 sentences) that describes what this code example demonstrates and its purpose. Focus on the practical application and key concepts illustrated.
 """
     
-    input_tokens = num_tokens_from_string(prompt, model_choice)
-    estimated_output_tokens = 100 # As in the original function
-    rate_limiter.acquire(input_tokens + estimated_output_tokens)
+    prompt_tokens = num_tokens_from_string(prompt, model_choice)
+    stats_collector.log_raw_chunk(source_file, chunk_index, num_tokens_from_string(code, model_choice))
 
     try:
+        rate_limiter.acquire(prompt_tokens + 100) # Estimate 100 output tokens
+
         response = openai.chat.completions.create(
             model=model_choice,
             messages=[
@@ -553,9 +583,32 @@ Based on the code example and its surrounding context, provide a concise summary
             max_tokens=100
         )
         
+        completion_tokens = response.usage.completion_tokens
+        total_tokens = response.usage.total_tokens
+
+        stats_collector.log_api_call(
+            source_file=source_file,
+            chunk_index=chunk_index,
+            call_type="code_example_summary",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            status="Success"
+        )
+        
         return response.choices[0].message.content.strip()
     
     except Exception as e:
+        stats_collector.log_api_call(
+            source_file=source_file,
+            chunk_index=chunk_index,
+            call_type="code_example_summary",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=0,
+            total_tokens=prompt_tokens,
+            status="Fail",
+            error_details=str(e)
+        )
         print(f"Error generating code example summary: {e}")
         return "Code example for demonstration purposes."
 

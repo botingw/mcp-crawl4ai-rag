@@ -15,7 +15,7 @@ from repository_utils import clone_repository, get_repository_files, validate_gi
 async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str, repo_path: str) -> Dict[str, Any]:
     """Processes documentation files and ingests them into the RAG system."""
     from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
-    from src.crawl4ai_mcp import smart_chunk_markdown, extract_section_info, process_code_example
+    from src.crawl4ai_mcp_botingw import smart_chunk_markdown, extract_section_info, process_code_example
 
     docs_content = []
     for doc_file in doc_files:
@@ -106,6 +106,7 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
 
         if "docs" in ingest_types:
             supabase_client = get_supabase_client()
+            print('doc files: ', files["doc_files"]) # debug
             results["docs_ingestion"] = await ingest_docs_to_rag(supabase_client, files["doc_files"], f"github.com/{repo_name}", temp_dir_obj.name)
 
         return {"success": True, "repo_url": repo_url, "results": results}
