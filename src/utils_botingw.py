@@ -201,7 +201,7 @@ Please give a short succinct context to situate this chunk within the overall do
 
     prompt_tokens = num_tokens_from_string(prompt, model_choice)
     raw_chunk_tokens=num_tokens_from_string(chunk, model_choice)
-    stats_collector.log_raw_chunk(source_file, chunk_index, raw_chunk_tokens)
+    # stats_collector.log_raw_chunk(source_file, chunk_index, raw_chunk_tokens)
 
     try:
         rate_limiter.acquire(prompt_tokens + 200) # Estimate 200 output tokens
@@ -571,7 +571,7 @@ Based on the code example and its surrounding context, provide a concise summary
 """
     
     prompt_tokens = num_tokens_from_string(prompt, model_choice)
-    stats_collector.log_raw_chunk(source_file, chunk_index, num_tokens_from_string(code, model_choice))
+    # stats_collector.log_raw_chunk(source_file, chunk_index, num_tokens_from_string(code, model_choice))
 
     try:
         rate_limiter.acquire(prompt_tokens + 100) # Estimate 100 output tokens

@@ -15,4 +15,8 @@ dependencies = [
     "sentence-transformers>=4.1.0",
     "neo4j>=5.28.1",
     "tiktoken==0.7.0",
+    "jupyter>=1.1.1",
+    "nbconvert>=7.16.6",
+    "jupyter-contrib-nbextensions>=0.7.0",
+    "notebook<7",
 ]

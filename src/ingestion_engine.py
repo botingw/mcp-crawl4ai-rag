@@ -9,7 +9,7 @@ import sys
 # print(f"sys.path in ingestion_engine.py: {sys.path}")
 # print(f"-------------------------------------")
 
-from repository_utils import clone_repository, get_repository_files, validate_github_url
+from repository_utils import clone_repository, get_repository_files, validate_github_url, process_document_files
 
 
 async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str, repo_path: str) -> Dict[str, Any]:
@@ -17,11 +17,7 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
     from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
     from src.crawl4ai_mcp_botingw import smart_chunk_markdown, extract_section_info, process_code_example
 
-    docs_content = []
-    for doc_file in doc_files:
-        with open(doc_file, 'r', encoding='utf-8') as f:
-            relative_path = str(doc_file.relative_to(repo_path))
-            docs_content.append({"url": relative_path, "markdown": f.read()})
+    docs_content = process_document_files(doc_files, repo_path)
 
     urls, chunk_numbers, contents, metadatas = [], [], [], []
     source_content_map = {}

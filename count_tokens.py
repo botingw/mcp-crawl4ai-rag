@@ -6,7 +6,7 @@ import sys
 # This is necessary for the imports to work
 # sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from src.repository_utils import clone_repository, get_repository_files
+from src.repository_utils import clone_repository, get_repository_files, process_document_files
 from src.utils_botingw import num_tokens_from_string, extract_code_blocks
 from src.crawl4ai_mcp_botingw import smart_chunk_markdown
 from src.config import MAX_TOKENS_PER_REQUEST
@@ -33,36 +33,33 @@ def count_tokens_in_repo(repo_url: str, include_folders: list[str] = None) -> tu
         
         print(f"Found {len(doc_files)} documentation files.")
 
-        for file_path in doc_files:
+        processed_docs = process_document_files(doc_files, repo_path)
+
+        for doc in processed_docs:
             file_count += 1
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                
-                # 1. Count raw tokens
-                raw_tokens = num_tokens_from_string(content, model_name="gpt-4")
-                total_raw_tokens += raw_tokens
+            content = doc['markdown']
+            
+            # 1. Count raw tokens
+            raw_tokens = num_tokens_from_string(content, model_name="gpt-4")
+            total_raw_tokens += raw_tokens
 
-                # 2. Estimate prompt tokens for source summary
-                source_id = file_path.name
-                truncated_content = content[:MAX_TOKENS_PER_REQUEST] # MAX_TOKENS_PER_REQUEST
-                prompt = f"""<source_content>\n{truncated_content}\n</source_content>\n\nThe above content is from the documentation for '{source_id}'. Please provide a concise summary (3-5 sentences) that describes what this library/tool/framework is about. The summary should help understand what the library/tool/framework accomplishes and the purpose.\n"""
-                prompt_tokens = num_tokens_from_string(prompt, model_name="gpt-4")
-                total_source_prompt_tokens += prompt_tokens
-                # 3. Estimate prompt tokens for chunk contextual embeddings
-                chunks = smart_chunk_markdown(content)
-                for chunk in chunks:
-                    prompt = f"""<document>\n{content[:MAX_TOKENS_PER_REQUEST]}\n</document>\nHere is the chunk we want to situate within the whole document\n<chunk>\n{chunk}\n</chunk>\nPlease give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
-                    total_chunk_prompt_tokens += num_tokens_from_string(prompt, model_name="gpt-4")
+            # 2. Estimate prompt tokens for source summary
+            source_id = doc['url']
+            truncated_content = content[:MAX_TOKENS_PER_REQUEST]
+            prompt = f"""<source_content>\n{truncated_content}\n</source_content>\n\nThe above content is from the documentation for '{source_id}'. Please provide a concise summary (3-5 sentences) that describes what this library/tool/framework is about. The summary should help understand what the library/tool/framework accomplishes and the purpose.\n"""
+            total_source_prompt_tokens += num_tokens_from_string(prompt, model_name="gpt-4")
 
-                # 4. Estimate prompt tokens for code example summaries
-                code_blocks = extract_code_blocks(content)
-                for block in code_blocks:
-                    prompt = f"""<context_before>\n{block['context_before'][-500:]}\n</context_before>\n\n<code_example>\n{block['code'][:16385]}\n</code_example>\n\n<context_after>\n{block['context_after'][:500]}\n</context_after>\n\nBased on the code example and its surrounding context, provide a concise summary (2-3 sentences) that describes what this code example demonstrates and its purpose. Focus on the practical application and key concepts illustrated.\n"""
-                    total_code_summary_prompt_tokens += num_tokens_from_string(prompt, model_name="gpt-4")
+            # 3. Estimate prompt tokens for chunk contextual embeddings
+            chunks = smart_chunk_markdown(content)
+            for chunk in chunks:
+                prompt = f"""<document>\n{content[:MAX_TOKENS_PER_REQUEST]}\n</document>\nHere is the chunk we want to situate within the whole document\n<chunk>\n{chunk}\n</chunk>\nPlease give a short succinct context to situate this chunk within the overall document for the purposes of improving search retrieval of the chunk. Answer only with the succinct context and nothing else."""
+                total_chunk_prompt_tokens += num_tokens_from_string(prompt, model_name="gpt-4")
 
-            except Exception as e:
-                print(f"Could not process file {file_path}: {e}")
+            # 4. Estimate prompt tokens for code example summaries
+            code_blocks = extract_code_blocks(content)
+            for block in code_blocks:
+                prompt = f"""<context_before>\n{block['context_before'][-500:]}\n</context_before>\n\n<code_example>\n{block['code'][:MAX_TOKENS_PER_REQUEST]}\n</code_example>\n\n<context_after>\n{block['context_after'][:500]}\n</context_after>\n\nBased on the code example and its surrounding context, provide a concise summary (2-3 sentences) that describes what this code example demonstrates and its purpose. Focus on the practical application and key concepts illustrated.\n"""
+                total_code_summary_prompt_tokens += num_tokens_from_string(prompt, model_name="gpt-4")
 
     return total_raw_tokens, total_source_prompt_tokens, total_chunk_prompt_tokens, total_code_summary_prompt_tokens, file_count
 

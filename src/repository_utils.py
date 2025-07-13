@@ -46,7 +46,7 @@ def get_repository_files(repo_path: str, include_folders: Optional[List[str]] = 
     }
     
     doc_extensions = {'.md', '.mdx', '.rst', '.ipynb', '.txt'}
-    # doc_extensions = {'.md'} # for debug, prove .ipynb take lots of input token, 10x than .md files for langgraph
+    doc_extensions = {'.md'} # for debug, prove .ipynb take lots of input token, 10x than .md files for langgraph
     
     # Normalize include_folders to be absolute paths from repo_path
     normalized_include_folders = []
@@ -88,3 +88,20 @@ def get_repository_files(repo_path: str, include_folders: Optional[List[str]] = 
         "doc_files": doc_files
     }
 
+def process_document_files(doc_files: List[Path], repo_path: str) -> List[Dict[str, str]]:
+    """Processes a list of documentation files, converting notebooks to markdown."""
+    import nbconvert
+    docs_content = []
+    for doc_file in doc_files:
+        try:
+            relative_path = str(doc_file.relative_to(repo_path))
+            if doc_file.suffix == '.ipynb':
+                exporter = nbconvert.MarkdownExporter(exclude_output=False)
+                markdown_content, _ = exporter.from_filename(doc_file)
+                docs_content.append({"url": relative_path, "markdown": markdown_content})
+            else:
+                with open(doc_file, 'r', encoding='utf-8') as f:
+                    docs_content.append({"url": relative_path, "markdown": f.read()})
+        except Exception as e:
+            print(f"Skipping file {doc_file} due to processing error: {e}")
+    return docs_content
