@@ -46,7 +46,6 @@ def get_repository_files(repo_path: str, include_folders: Optional[List[str]] = 
     }
     
     doc_extensions = {'.md', '.mdx', '.rst', '.ipynb', '.txt'}
-    doc_extensions = {'.md'} # for debug, prove .ipynb take lots of input token, 10x than .md files for langgraph
     
     # Normalize include_folders to be absolute paths from repo_path
     normalized_include_folders = []

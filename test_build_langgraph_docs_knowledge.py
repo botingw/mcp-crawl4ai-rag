@@ -32,7 +32,7 @@ async def main():
     # --- Configuration ---
     repo_url = "https://github.com/langchain-ai/langgraph.git"
     ingest_types = ["docs"]
-    include_folders = ["docs/docs/how-tos/http"]
+    include_folders = ["docs/docs/how-tos"]
 
     print(f"--- Starting Knowledge Base Build for: {repo_url} ---")
     print(f"Ingestion types: {ingest_types}")

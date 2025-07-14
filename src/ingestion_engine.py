@@ -67,13 +67,14 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
                 code_urls.append(doc['url'])
                 code_chunk_numbers.append(i)
                 code_examples.append(block['code'])
-                code_summaries.append(process_code_example((block['code'], block['context_before'], block['context_after'])))
+                code_summaries.append(process_code_example((block['code'], block['context_before'], block['context_after'], doc['url'], i)))
                 code_metadatas.append({
                     "source": source_id,
                     "url": doc['url'],
                     "chunk_index": i,
                     "char_count": len(block['code']),
-                    "word_count": len(block['code'].split())
+                    "word_count": len(block['code'].split()),
+                    "language": block['language']
                 })
 
         if all_code_blocks:
