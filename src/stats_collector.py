@@ -50,6 +50,16 @@ class StatsCollector:
             "total_billed_tokens": 0,
             "call_details": []
         }))
+        self.per_code_block_stats = defaultdict(lambda: defaultdict(lambda: {
+            "raw_code_tokens": 0,
+            "total_api_calls": 0,
+            "successful_calls": 0,
+            "failed_calls": 0,
+            "total_prompt_tokens_sent": 0,
+            "total_completion_tokens_received": 0,
+            "total_billed_tokens": 0,
+            "call_details": []
+        }))
 
     def log_source_api_call(self, source_id: str, raw_doc_tokens: int, call_type: str, prompt_tokens: int, completion_tokens: int, total_tokens: int, status: str, error_details: str = None):
         """
@@ -133,6 +143,47 @@ class StatsCollector:
         call_type_stats["completion_tokens"] += completion_tokens
         call_type_stats["total_tokens"] += total_tokens
 
+    def log_code_block_api_call(self, source_file: str, code_block_index: int, raw_code_tokens: int, call_type: str, prompt_tokens: int, completion_tokens: int, total_tokens: int, status: str, error_details: str = None):
+        """
+        Logs the details of a single API call for a specific code block.
+        """
+        self.aggregated_stats["total_api_calls_initiated"] += 1
+        self.aggregated_stats["total_prompt_tokens_sent"] += prompt_tokens
+        self.aggregated_stats["total_completion_tokens_received"] += completion_tokens
+        self.aggregated_stats["total_billed_tokens"] += total_tokens
+
+        code_block_stats = self.per_code_block_stats[source_file][code_block_index]
+        code_block_stats["raw_code_tokens"] = raw_code_tokens
+        code_block_stats["total_api_calls"] += 1
+        code_block_stats["total_prompt_tokens_sent"] += prompt_tokens
+        code_block_stats["total_completion_tokens_received"] += completion_tokens
+        code_block_stats["total_billed_tokens"] += total_tokens
+
+        call_detail = {
+            "call_type": call_type,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "status": status,
+        }
+        if error_details:
+            call_detail["error_details"] = error_details
+        
+        code_block_stats["call_details"].append(call_detail)
+
+        if status == "Success":
+            self.aggregated_stats["total_successful_calls"] += 1
+            code_block_stats["successful_calls"] += 1
+        else:
+            self.aggregated_stats["total_failed_calls"] += 1
+            code_block_stats["failed_calls"] += 1
+
+        call_type_stats = self.aggregated_stats["calls_by_type"][call_type]
+        call_type_stats["calls"] += 1
+        call_type_stats["prompt_tokens"] += prompt_tokens
+        call_type_stats["completion_tokens"] += completion_tokens
+        call_type_stats["total_tokens"] += total_tokens
+
     def get_report(self) -> str:
         """
         Generates a comprehensive JSON report of all collected statistics.
@@ -140,7 +191,8 @@ class StatsCollector:
         report = {
             "aggregated_stats": dict(self.aggregated_stats),
             "per_source_stats": dict(self.per_source_stats),
-            "per_chunk_stats": {k: dict(v) for k, v in self.per_chunk_stats.items()}
+            "per_chunk_stats": {k: dict(v) for k, v in self.per_chunk_stats.items()},
+            "per_code_block_stats": {k: dict(v) for k, v in self.per_code_block_stats.items()}
         }
         report["aggregated_stats"]["calls_by_type"] = {k: dict(v) for k, v in self.aggregated_stats["calls_by_type"].items()}
         return json.dumps(report, indent=4)

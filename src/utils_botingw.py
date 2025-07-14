@@ -589,9 +589,9 @@ Based on the code example and its surrounding context, provide a concise summary
         completion_tokens = response.usage.completion_tokens
         total_tokens = response.usage.total_tokens
 
-        stats_collector.log_chunk_api_call(
+        stats_collector.log_code_block_api_call(
             source_file=source_file,
-            chunk_index=chunk_index,
+            code_block_index=chunk_index,
             raw_chunk_tokens=num_tokens_from_string(code, model_choice),
             call_type="code_example_summary",
             prompt_tokens=prompt_tokens,
@@ -603,9 +603,9 @@ Based on the code example and its surrounding context, provide a concise summary
         return response.choices[0].message.content.strip()
     
     except Exception as e:
-        stats_collector.log_chunk_api_call(
+        stats_collector.log_code_block_api_call(
             source_file=source_file,
-            chunk_index=chunk_index,
+            code_block_index=chunk_index,
             raw_chunk_tokens=num_tokens_from_string(code, model_choice),
             call_type="code_example_summary",
             prompt_tokens=prompt_tokens,
@@ -616,6 +616,21 @@ Based on the code example and its surrounding context, provide a concise summary
         )
         print(f"Error generating code example summary: {e}")
         return "Code example for demonstration purposes."
+
+
+def process_code_example(args):
+    """
+    Process a single code example to generate its summary.
+    This function is designed to be used with concurrent.futures.
+    
+    Args:
+        args: Tuple containing (code, context_before, context_after)
+        
+    Returns:
+        The generated summary
+    """
+    code, context_before, context_after = args
+    return generate_code_example_summary(code, context_before, context_after)
 
 
 def add_code_examples_to_supabase(
@@ -682,7 +697,8 @@ def add_code_examples_to_supabase(
             
             # Extract source_id from URL
             parsed_url = urlparse(urls[idx])
-            source_id = parsed_url.netloc or parsed_url.path
+            # source_id = parsed_url.netloc or parsed_url.path # this is not robust, should always get source_id from metadata?
+            source_id = metadatas[idx]["source"]
             
             batch_data.append({
                 'url': urls[idx],

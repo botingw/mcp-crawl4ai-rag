@@ -10,12 +10,11 @@ import sys
 # print(f"-------------------------------------")
 
 from repository_utils import clone_repository, get_repository_files, validate_github_url, process_document_files
-
+from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks, process_code_example
+from src.crawl_utils import smart_chunk_markdown, extract_section_info
 
 async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: str, repo_path: str) -> Dict[str, Any]:
     """Processes documentation files and ingests them into the RAG system."""
-    from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks
-    from src.crawl4ai_mcp_botingw import smart_chunk_markdown, extract_section_info, process_code_example
 
     docs_content = process_document_files(doc_files, repo_path)
 
@@ -55,16 +54,29 @@ async def ingest_docs_to_rag(supabase_client, doc_files: List[Path], source_id: 
     code_examples_found = 0
     if os.getenv("USE_AGENTIC_RAG", "false") == "true":
         all_code_blocks = []
-        for doc in docs_content:
-            all_code_blocks.extend(extract_code_blocks(doc['markdown']))
-        
-        if all_code_blocks:
-            code_examples = [block['code'] for block in all_code_blocks]
-            code_summaries = [process_code_example((block['code'], block['context_before'], block['context_after'])) for block in all_code_blocks]
-            code_urls = [doc['url'] for doc in docs_content for _ in extract_code_blocks(doc['markdown'])]
-            code_chunk_numbers = list(range(len(all_code_blocks)))
-            code_metadatas = [{"source": source_id} for _ in all_code_blocks]
+        code_urls = []
+        code_chunk_numbers = []
+        code_examples = []
+        code_summaries = []
+        code_metadatas = []
 
+        for doc in docs_content:
+            blocks = extract_code_blocks(doc['markdown'])
+            for i, block in enumerate(blocks):
+                all_code_blocks.append(block)
+                code_urls.append(doc['url'])
+                code_chunk_numbers.append(i)
+                code_examples.append(block['code'])
+                code_summaries.append(process_code_example((block['code'], block['context_before'], block['context_after'])))
+                code_metadatas.append({
+                    "source": source_id,
+                    "url": doc['url'],
+                    "chunk_index": i,
+                    "char_count": len(block['code']),
+                    "word_count": len(block['code'].split())
+                })
+
+        if all_code_blocks:
             add_code_examples_to_supabase(supabase_client, code_urls, code_chunk_numbers, code_examples, code_summaries, code_metadatas)
             code_examples_found = len(all_code_blocks)
 

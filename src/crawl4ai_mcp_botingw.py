@@ -31,7 +31,7 @@ from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode
 knowledge_graphs_path = Path(__file__).resolve().parent.parent / 'knowledge_graphs'
 sys.path.append(str(knowledge_graphs_path))
 
-from utils import (
+from utils_botingw import (
     get_supabase_client, 
     add_documents_to_supabase, 
     search_documents,
