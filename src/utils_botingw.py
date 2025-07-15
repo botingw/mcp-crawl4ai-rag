@@ -36,23 +36,18 @@ def num_tokens_from_string(string: str, model_name: str) -> int:
 
 class TokenBucketRateLimiter:
     """
-    A thread-safe token bucket rate limiter for proactive throttling.
+    A thread-safe token bucket rate limiter using a condition variable.
+    This is more efficient than a sleep-based approach for high-concurrency scenarios.
     """
     def __init__(self, capacity, refill_time_seconds):
-        """
-        Initializes the token bucket.
-        
-        :param capacity: The total number of tokens the bucket can hold (e.g., your TPM limit).
-        :param refill_time_seconds: The time in seconds for the bucket to refill completely (e.g., 60).
-        """
         self.capacity = float(capacity)
         self._tokens = float(capacity)
         self.refill_rate = capacity / refill_time_seconds
         self.last_refill_time = time.monotonic()
-        self.lock = threading.Lock()
+        self.condition = threading.Condition()
 
     def _refill(self):
-        """Refills the bucket with tokens based on elapsed time. This is an internal method."""
+        """Refills the bucket with tokens based on elapsed time. Must be called within a locked context."""
         now = time.monotonic()
         time_passed = now - self.last_refill_time
         new_tokens = time_passed * self.refill_rate
@@ -62,18 +57,19 @@ class TokenBucketRateLimiter:
     def acquire(self, tokens_needed):
         """
         Acquires a specified number of tokens, waiting if necessary.
-        This is the main method to call before an API request.
         """
         if tokens_needed > self.capacity:
             raise ValueError("Requested tokens exceed the bucket's total capacity.")
-        with self.lock:
+
+        with self.condition:
             self._refill()
-            if tokens_needed > self._tokens:
+            while tokens_needed > self._tokens:
                 required_additional_tokens = tokens_needed - self._tokens
                 wait_time = required_additional_tokens / self.refill_rate
-                print(f"[THROTTLER]: Not enough tokens. Need {tokens_needed:.0f}, have {self._tokens:.0f}. Proactively waiting for {wait_time:.2f} seconds.")
-                time.sleep(wait_time)
-                self._refill()
+                # Wait for the calculated time, this releases the lock and re-acquires it upon waking
+                self.condition.wait(timeout=wait_time)
+                self._refill() # Refill again after waiting
+
             self._tokens -= tokens_needed
 
 rate_limiter = TokenBucketRateLimiter(TPM_LIMIT, 60)
@@ -482,7 +478,8 @@ def extract_code_blocks(markdown_content: str, min_code_words: int = 20) -> List
                 current_text = ""
             
             # Add the code block
-            language = (token.info or "").split()[0] if token.info else None
+            language_info = (token.info or "").split()
+            language = language_info[0] if language_info else None
             structured_blocks.append({
                 'type': 'code', 
                 'content': token.content, 

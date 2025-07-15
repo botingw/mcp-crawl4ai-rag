@@ -1,6 +1,6 @@
 
 # Exponential backoff configuration
-INITIAL_DELAY = 300
+INITIAL_DELAY = 30
 EXPONENTIAL_BASE = 4
 JITTER = True
 MAX_RETRIES = 10

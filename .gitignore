@@ -9,6 +9,7 @@ test_script_hallucination*
 # boting add
 # temp log
 langgraph_doc_rag.log
+langgraph_doc_rag.json
 .vscode/
 mcp_server.err
 all_my_changes.md

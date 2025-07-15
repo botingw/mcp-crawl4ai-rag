@@ -31,8 +31,12 @@ async def main():
 
     # --- Configuration ---
     repo_url = "https://github.com/langchain-ai/langgraph.git"
+    # for docs
     ingest_types = ["docs"]
-    include_folders = ["docs/docs/how-tos"]
+    include_folders = ["docs/docs"]
+    # # for code
+    # ingest_types = ["code"]
+    # include_folders = None
 
     print(f"--- Starting Knowledge Base Build for: {repo_url} ---")
     print(f"Ingestion types: {ingest_types}")
@@ -56,7 +60,17 @@ async def main():
 
     # --- Print Stats Report ---
     print("\n--- Ingestion Statistics Report ---")
-    print(stats_collector.get_report())
+    stats_report = stats_collector.get_report()
+
+    # Define the output filename
+    output_filename = "langgraph_doc_rag.json"
+
+    # Open the file in write mode ('w') and write the string directly
+    with open(output_filename, 'w') as f:
+        f.write(stats_report)
+
+    print(f"Report successfully saved to {output_filename}")
+
 
 if __name__ == "__main__":
     # Ensure you have the necessary environment variables set in .env:

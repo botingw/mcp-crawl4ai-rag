@@ -1,13 +1,8 @@
 from typing import Dict, Any, List
 import os
 from pathlib import Path
-import sys
+import traceback
 
-# print(f"\n--- Debugging ingestion_engine.py ---")
-# print(f"__name__: {__name__}")
-# print(f"__package__: {__package__}")
-# print(f"sys.path in ingestion_engine.py: {sys.path}")
-# print(f"-------------------------------------")
 
 from repository_utils import clone_repository, get_repository_files, validate_github_url, process_document_files
 from src.utils_botingw import add_documents_to_supabase, extract_source_summary, update_source_info, add_code_examples_to_supabase, extract_code_blocks, process_code_example
@@ -115,13 +110,14 @@ async def ingest_repository(repo_url: str, ingest_types: List[str] = ["code", "d
 
         if "docs" in ingest_types:
             supabase_client = get_supabase_client()
-            print('doc files: ', files["doc_files"]) # debug
             results["docs_ingestion"] = await ingest_docs_to_rag(supabase_client, files["doc_files"], f"github.com/{repo_name}", temp_dir_obj.name)
 
         return {"success": True, "repo_url": repo_url, "results": results}
 
     except Exception as e:
-        return {"success": False, "repo_url": repo_url, "error": str(e)}
+        error_details = traceback.format_exc()
+        print(f"An error occurred during repository ingestion:\n{error_details}")
+        return {"success": False, "repo_url": repo_url, "error": str(e), "details": error_details}
     finally:
         if temp_dir_obj:
             temp_dir_obj.cleanup()
