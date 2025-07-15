@@ -14,8 +14,8 @@ import re
 import time
 import random
 import tiktoken
-from .stats_collector import stats_collector
-from .config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES, MAX_WORKERS, MAX_TOKENS_PER_REQUEST, TPM_LIMIT
+from stats_collector import stats_collector
+from config import INITIAL_DELAY, EXPONENTIAL_BASE, JITTER, MAX_RETRIES, MAX_WORKERS, MAX_TOKENS_PER_REQUEST, TPM_LIMIT
 import threading
 
 def num_tokens_from_string(string: str, model_name: str) -> int:
