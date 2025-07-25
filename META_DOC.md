@@ -1,3 +1,9 @@
+<!--
+Copyright (c) 2025 Boting Wang
+
+SPDX-License-Identifier: MIT
+-->
+
 # META DOC: The Developer's Guide to the Crawl4AI RAG & KG Server
 
 This document is the single source of truth for the `mcp-crawl4ai-rag` server.

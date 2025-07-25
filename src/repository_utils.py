@@ -1,3 +1,8 @@
+# Copyright (c) 2025 Boting Wang
+# Copyright (c) 2025 Cole Medin
+#
+# SPDX-License-Identifier: MIT
+
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import tempfile

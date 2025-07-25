@@ -1,4 +1,7 @@
-
+# Copyright (c) 2025 Boting Wang
+# Copyright (c) 2025 Cole Medin
+#
+# SPDX-License-Identifier: MIT
 
 """
 Utility functions for the Crawl4AI MCP server.

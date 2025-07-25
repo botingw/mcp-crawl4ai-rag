@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Boting Wang
+#
+# SPDX-License-Identifier: MIT
+
 import nbconvert
 import pathlib
 

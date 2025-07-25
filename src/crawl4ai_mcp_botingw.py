@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Boting Wang
+# Copyright (c) 2025 Cole Medin
+#
+# SPDX-License-Identifier: MIT
 
 """
 MCP server for web crawling with Crawl4AI.

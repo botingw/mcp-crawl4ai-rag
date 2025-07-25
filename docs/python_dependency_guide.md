@@ -1,3 +1,9 @@
+<!--
+Copyright (c) 2025 Boting Wang
+
+SPDX-License-Identifier: MIT
+-->
+
 # Python Dependency and Import Guide
 
 This guide provides a clear overview of how to manage Python dependencies and handle imports within the `crawl4ai-mcp` project. Following these conventions is crucial for avoiding common import errors and ensuring a smooth development workflow.
