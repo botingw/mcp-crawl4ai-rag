@@ -16,3 +16,7 @@ all_my_changes.md
 all_my_changes_2.md
 all_my_changes_3.md
 ingestion_stats_detailed_log.json
+src/crawl4ai_mcp_debug.py
+src/crawl4ai_mcp_debug2.py
+start_mcp_server_2_debug.sh
+reports/

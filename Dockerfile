@@ -4,18 +4,30 @@ ARG PORT=8051
 
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y git
+
 # Install uv
-RUN pip install uv
+RUN pip install --no-cache-dir uv
+
+# Create the venv with uv (explicit path is clearer)
+RUN uv venv /app/.venv
+
+# Make that venv the default for all subsequent commands
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy the MCP server files
 COPY . .
 
-# Install packages directly to the system (no virtual environment)
-# Combining commands to reduce Docker layers
-RUN uv pip install --system -e . && \
-    crawl4ai-setup
+# Install deps into the venv with uv (no --system)
+RUN df -h && df -i
+RUN uv pip install --no-cache-dir -e .
+
+# Any project-specific setup
+RUN crawl4ai-setup
+
+RUN playwright install chromium
 
 EXPOSE ${PORT}
+CMD ["python", "-u", "test_docker_io.py"]
 
-# Command to run the MCP server
-CMD ["python", "src/crawl4ai_mcp.py"]
