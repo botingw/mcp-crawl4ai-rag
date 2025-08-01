@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # Add the mcp-crawl4ai-rag directory to the Python path to allow imports
 sys.path.append(str(Path(__file__).resolve().parent))
 
-from src.utils import get_supabase_client, search_documents
+from src.utils_botingw import get_supabase_client, search_documents
 from neo4j import GraphDatabase
 
 def main():
