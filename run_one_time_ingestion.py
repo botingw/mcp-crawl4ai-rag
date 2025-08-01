@@ -20,56 +20,82 @@ from src.stats_collector import stats_collector
 async def main():
     """
     Builds a knowledge base for the LangGraph documentation by ingesting
-    the docs/docs folder from the official repository.
+    the code and docs from the official repository in two separate passes.
     """
     # Load environment variables from the .env file in the mcp-crawl4ai-rag submodule
     project_root = Path(__file__).resolve().parent
     dotenv_path = project_root / '.env'
     load_dotenv(dotenv_path, override=True)
 
-    # --- Configuration ---
     repo_url = "https://github.com/langchain-ai/langgraph.git"
-    # # for docs
-    # ingest_types = ["docs"]
-    # include_folders = ["docs/docs"]
-    # for code
-    ingest_types = ["code"]
-    include_folders = None
-
-    print(f"--- Starting Knowledge Base Build for: {repo_url} ---")
-    print(f"Ingestion types: {ingest_types}")
-    print(f"Included folders: {include_folders}")
-
-    # --- Reset Stats Collector ---
-    stats_collector.reset()
-
-    # --- Run Ingestion ---
-    result = await ingest_repository(repo_url, ingest_types, include_folders=include_folders)
-    
-    print("\n--- Knowledge Base Build Result ---")
-    import json
-    print(json.dumps(result, indent=2))
-
-    if result.get("success"):
-        print("\n--- Knowledge Base built successfully. ---")
-    else:
-        print("\n--- Knowledge Base build failed. ---")
-        print(f"Error details: {result.get('error')}")
-
-    # --- Print Stats Report ---
-    print("\n--- Ingestion Statistics Report ---")
-    stats_report = stats_collector.get_report()
-
-    # Define the output directory and filename
+    all_results = {}
+    overall_success = True
     output_dir = Path("./reports")
     output_dir.mkdir(exist_ok=True)
-    output_filename = output_dir / "langgraph_ingestion_report.json"
 
-    # Open the file in write mode ('w') and write the string directly
-    with open(output_filename, 'w') as f:
-        f.write(stats_report)
+    print(f"--- Starting Full Knowledge Base Build for: {repo_url} ---")
 
-    print(f"Report successfully saved to {output_filename}")
+    # --- Pass 1: Code Ingestion ---
+    print("\n--- [PASS 1/2] Ingesting Code for Knowledge Graph ---")
+    stats_collector.reset()
+    code_ingest_types = ["code"]
+    code_include_folders = None
+    print(f"Ingestion types: {code_ingest_types}")
+    print(f"Included folders: {code_include_folders or 'All'}")
+    
+    code_result = await ingest_repository(repo_url, code_ingest_types, include_folders=code_include_folders)
+    all_results['code_pass'] = code_result
+    if not code_result.get("success"):
+        overall_success = False
+        print("--- Code Ingestion FAILED ---")
+        print(f"Error details: {code_result.get('error')}")
+    else:
+        print("--- Code Ingestion Succeeded ---")
+    
+    # Save the report for the code pass
+    code_report = stats_collector.get_report()
+    code_report_filename = output_dir / "code_ingestion_report.json"
+    with open(code_report_filename, 'w') as f:
+        f.write(code_report)
+    print(f"Code ingestion report saved to {code_report_filename}")
+
+
+    # --- Pass 2: Documentation Ingestion ---
+    print("\n--- [PASS 2/2] Ingesting Documentation for RAG ---")
+    stats_collector.reset()
+    docs_ingest_types = ["docs"]
+    docs_include_folders = ["docs/docs"]
+    print(f"Ingestion types: {docs_ingest_types}")
+    print(f"Included folders: {docs_include_folders}")
+
+    docs_result = await ingest_repository(repo_url, docs_ingest_types, include_folders=docs_include_folders)
+    all_results['docs_pass'] = docs_result
+    if not docs_result.get("success"):
+        overall_success = False
+        print("--- Documentation Ingestion FAILED ---")
+        print(f"Error details: {docs_result.get('error')}")
+    else:
+        print("--- Documentation Ingestion Succeeded ---")
+
+    # Save the report for the docs pass
+    docs_report = stats_collector.get_report()
+    docs_report_filename = output_dir / "docs_ingestion_report.json"
+    with open(docs_report_filename, 'w') as f:
+        f.write(docs_report)
+    print(f"Docs ingestion report saved to {docs_report_filename}")
+
+
+    # --- Final Summary ---
+    print("\n--- Overall Knowledge Base Build Summary ---")
+    import json
+    print(json.dumps(all_results, indent=2))
+
+    if overall_success:
+        print("\n--- Knowledge Base built successfully. ---")
+    else:
+        print("\n--- Knowledge Base build FAILED. See errors above. ---")
+        sys.exit(1)
+
 
 
 if __name__ == "__main__":
