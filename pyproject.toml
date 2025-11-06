@@ -8,7 +8,6 @@ dependencies = [
     "numpy==1.26.4", # resolve issue numpy 2 not work
     "torch==2.2.2", # resolve issue macos x86_64 not supported
     "crawl4ai==0.6.2",
-    "mcp==1.7.1",
     "supabase==2.15.1",
     "openai==1.71.0",
     "dotenv==0.9.9",
@@ -19,4 +18,5 @@ dependencies = [
     "nbconvert>=7.16.6",
     "jupyter-contrib-nbextensions>=0.7.0",
     "notebook<7",
+    "fastmcp==2.12.5",
 ]
