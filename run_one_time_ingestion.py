@@ -39,7 +39,7 @@ async def main():
     print("\n--- [PASS 1/2] Ingesting Code for Knowledge Graph ---")
     stats_collector.reset()
     code_ingest_types = ["code"]
-    code_include_folders = None
+    code_include_folders = None # TODO: 1. add include folder logic in code ingestion. 2. include ["libs"] for langgraph repo
     print(f"Ingestion types: {code_ingest_types}")
     print(f"Included folders: {code_include_folders or 'All'}")
     
